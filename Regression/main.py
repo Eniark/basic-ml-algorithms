@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-
+from itertools import combinations_with_replacement
 
 
 class Regression:
@@ -43,44 +43,61 @@ class GradientDescentRegression(Regression):
     def __init__(self, learning_rate=1e-2, loss=None):
         self.loss_fn = loss
         self.learning_rate = learning_rate
+        self.loss_history = []
 
 
-    def __initialize(self, n_parameters):
+    def _initialize(self, n_parameters):
         limit = 1/np.sqrt(n_parameters)
         self.W = np.random.uniform(-limit, limit, size= (n_parameters, ))
     
-    def __step(self, epoch, X, y):
+    def _step(self, epoch, X, y):
+        # print(X, self.W)
         y_pred = np.dot(X, self.W)
-        loss = self.loss_fn(y, y_pred)
+        # print(y_pred)
+        loss = self.loss_fn.calculate(y, y_pred, X)
         print(f'Epoch {epoch}| loss {loss}')
-        self.optimize(y, y_pred, X)
+        self.optimize()
+        self.loss_history.append(loss)
+
+    def optimize(self):
+        derivative_theta = self.loss_fn.get_derivative()
+        # print(self.W)
+        self.W -= self.learning_rate * derivative_theta
+        # print(self.W)
+
+    def predict(self, X):
+        X = np.insert(X, 0, 1, axis=1)
+        y_pred = X.dot(self.W)
+        return y_pred
 
     def fit(self, X, y, epochs=1, animate=False):
         X = np.insert(X, 0, 1, axis=1)
         _, n_features = X.shape
-        self.__initialize(n_features)
-       
+        self._initialize(n_features)
+        
 
-        for epoch in range(epochs):
-            super().__step(epoch, X, y)
-    
+        for epoch in range(1, epochs + 1):
+            self._step(epoch, X, y)
 
 class LinearRegression(GradientDescentRegression):
 
     """Linear Regression using gradient descent"""
     def __init__(self, learning_rate, loss):
-        super(LinearRegression, self).__init__(loss_fn=loss, learning_rate=learning_rate)
+        super(LinearRegression, self).__init__(loss=loss, learning_rate=learning_rate)
     
-    def optimize(self, y_true, y_pred, X):
-        derivative_theta = (-(y_true-y_pred).dot(X))/X.shape[0]
-        self.W -= self.learning_rate * derivative_theta
-    
+
     def fit(self, X, y, epochs=1, animate=False):
-        pass
+        if animate:
+            fig = plt.figure(figsize=(10,5))
+            anim = FuncAnimation(fig, func=self.__animated_fit, fargs=(X,y), frames=epochs, interval=10, repeat=False)
+            plt.show()
+
+        else:
+            super(LinearRegression, self).fit(X, y, epochs=1, animate=False) # call parents fit method which has no animation defined
 
     def __animated_fit(self, epoch, X, y):
         plt.cla()
-        super().__step(epoch, X, y)
+        self._step(epoch, X, y)
         b, m = self.W
         x_line = range(int(np.min(X)), int(np.ceil(np.max(X))))
         y_line = super().get_line(x_line, m, b)
@@ -89,34 +106,101 @@ class LinearRegression(GradientDescentRegression):
         plt.plot(x_line, y_line);
 
 
+    
 class SGDRegressor(GradientDescentRegression):
     def __init__(self, learning_rate, loss):
         super(SGDRegressor, self).__init__(loss=loss, learning_rate=learning_rate)
     
-    def __step(self, epoch, X, y):
-        x_i = np.random.choice(X) 
-        y_pred = np.dot(x_i, self.W)
-        loss = self.loss_fn(y, y_pred)
+    def _step(self, epoch, X, y):
+        idx = np.random.randint(X.shape[0])
+        x_i = X[idx].reshape(1, 2)
+        y_i = y[idx].reshape(1,)
+        y_pred = np.dot(x_i, self.W).reshape(1,)
+        loss = self.loss_fn.calculate(y_i, y_pred, x_i)
         print(f'Epoch {epoch}| loss {loss}')
-        self.optimize(y, y_pred, x_i)
+        self.optimize()
+        self.loss_history.append(loss)
 
 
-    def fit(self, X, y, animate=False):
+    def fit(self, X, y, epochs=1, animate=False):
+
+        X = np.insert(X, 0, 1, axis=1)
+        _, n_features = X.shape
+        self._initialize(n_features)
+
         if animate:
             assert n_features==2, 'There can only be one feature for visualization.' 
             fig = plt.figure(figsize=(10,5))
             anim = FuncAnimation(fig, func=self.__animated_fit, fargs=(X,y), frames=epochs, interval=10, repeat=False)
             plt.show()
+            self.loss_history = self.loss_history[1:] # needed since FuncAnimation init_func and func parameters are the same 
+                                                            # and one additional iteration occurs at the start
+            plt.plot(range(1, epochs + 1), self.loss_history)
+            plt.xlabel('Epoch')
+            plt.ylabel(f'Loss - {self.loss_fn.__class__.__name__}')
+            plt.show()
             return
 
-        else:
-            super().fit(X,y)
+       
+
+        for epoch in range(epochs):
+            self._step(epoch, X, y)
+
     def __animated_fit(self, epoch, X, y):
         plt.cla()
-        self.__step(epoch, X, y)
+        self._step(epoch, X, y)
         b, m = self.W
         x_line = range(int(np.min(X)), int(np.ceil(np.max(X))))
         y_line = super().get_line(x_line, m, b)
 
         plt.scatter(X[:, 1], y)
         plt.plot(x_line, y_line);
+
+
+class PolynomialRegression(GradientDescentRegression):
+    def __init__(self, degree=2, learning_rate=0.01, loss=None):
+        self.degree = degree
+        super(PolynomialRegression, self).__init__(learning_rate, loss)
+
+
+    def transform(self, X):
+        # X_transformed = np.ones((X.shape[0], 1))
+        
+        # for deg in range(1, self.degree + 1):
+        #     X_pow = np.power(X, deg)
+        #     X_transformed = np.append(X_transformed, X_pow.reshape(-1, 1), axis=1)
+        # return X_transformed
+
+        n_samples, n_features = X.shape
+
+        combs = [combinations_with_replacement(range(n_features), i) for i in range(self.degree + 1)]
+        combs = [item for sublist in combs for item in sublist]
+        n_output_features = len(combs)
+
+        X_transformed = np.empty((n_samples, n_output_features))
+        for idx, index_comb in enumerate(combs):
+            X_transformed[:, idx] = np.prod(X[:, index_comb], axis=1)
+
+        return X_transformed
+
+    def fit(self, X, y, epochs=1, animate=False):
+        X = self.transform(X)
+        # X = self.normalize(X)
+        _, n_features = X.shape
+        self._initialize(n_features)
+        if animate:
+            fig = plt.figure(figsize=(10,5))
+            anim = FuncAnimation(fig, func=self.__animated_fit, fargs=(X,y), frames=epochs, interval=10, repeat=False)
+            plt.show()
+            return
+
+        for epoch in range(1, epochs + 1):
+            self._step(epoch, X, y)
+
+    def __animated_fit(self, epoch, X, y):
+        plt.cla()
+        self._step(epoch, X, y)
+        x_line = range(int(np.min(X)), int(np.ceil(np.max(X[:, 1 ]))))
+        y_line = np.dot(X, self.W)
+        plt.scatter(X[:, 1], y)
+        plt.plot(np.linspace(-2, int(np.ceil(np.max(X[:, 1 ]))), 101), y_line);
