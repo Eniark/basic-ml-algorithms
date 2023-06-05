@@ -53,6 +53,11 @@ class MAPE:
         return np.mean(np.abs((self.y_true - self.y_pred)/self.y_true))
 
 
+
+
+
+
+
 class R_squared:
     def calculate(self, y_true, y_pred, X):
         self.y_true = y_true

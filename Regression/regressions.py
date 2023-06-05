@@ -9,7 +9,9 @@ class Regression:
     """Parent class for Regression"""
 
     def normalize(self, X):
-        return (X - np.mean(X))/np.std(X)
+        # if X.ndim==2:
+            # return (X - np.mean(X))/np.std(X)
+        return (X - np.mean(X, axis=0))/np.std(X, axis=0)
     
     @staticmethod
     def get_line(x, m, b):
@@ -51,9 +53,7 @@ class GradientDescentRegression(Regression):
         self.W = np.random.uniform(-limit, limit, size= (n_parameters, ))
     
     def _step(self, epoch, X, y):
-        # print(X, self.W)
         y_pred = np.dot(X, self.W)
-        # print(y_pred)
         loss = self.loss_fn.calculate(y, y_pred, X)
         print(f'Epoch {epoch}| loss {loss}')
         self.optimize()
@@ -63,7 +63,6 @@ class GradientDescentRegression(Regression):
         derivative_theta = self.loss_fn.get_derivative()
         # print(self.W)
         self.W -= self.learning_rate * derivative_theta
-        # print(self.W)
 
     def predict(self, X):
         X = np.insert(X, 0, 1, axis=1)
@@ -158,39 +157,41 @@ class SGDRegressor(GradientDescentRegression):
 
 
 class PolynomialRegression(GradientDescentRegression):
+    """Multiple regression using Gradient Descent algorithm"""
+
+    """Suggestion: use learning_rate<0.1. Very unstable. Skipping this for now."""
+
     def __init__(self, degree=2, learning_rate=0.01, loss=None):
         self.degree = degree
         super(PolynomialRegression, self).__init__(learning_rate, loss)
 
 
     def transform(self, X):
-        # X_transformed = np.ones((X.shape[0], 1))
-        
+        # X_transformed = np.empty((X.shape[0], self.degree))
         # for deg in range(1, self.degree + 1):
         #     X_pow = np.power(X, deg)
-        #     X_transformed = np.append(X_transformed, X_pow.reshape(-1, 1), axis=1)
+        #     X_transformed[:, deg - 1] = X_pow.flatten()
         # return X_transformed
 
         n_samples, n_features = X.shape
+        combinations_of_features = [combinations_with_replacement(range(n_features), i) for i in range(self.degree + 1)]
+        combinations_of_features = [item for sublist in combinations_of_features for item in sublist]
+        n_resulting_features = len(combinations_of_features)
+        X_transformed = np.empty((n_samples, n_resulting_features))
+        for idx, index_combinations in enumerate(combinations_of_features):
+            X_transformed[:, idx ] = np.prod(X[:, index_combinations], axis=1)
 
-        combs = [combinations_with_replacement(range(n_features), i) for i in range(self.degree + 1)]
-        combs = [item for sublist in combs for item in sublist]
-        n_output_features = len(combs)
-
-        X_transformed = np.empty((n_samples, n_output_features))
-        for idx, index_comb in enumerate(combs):
-            X_transformed[:, idx] = np.prod(X[:, index_comb], axis=1)
-
-        return X_transformed
+        return X_transformed[:, 1:]
 
     def fit(self, X, y, epochs=1, animate=False):
         X = self.transform(X)
         # X = self.normalize(X)
+        X = np.insert(X, 0, 1, axis=1)
         _, n_features = X.shape
         self._initialize(n_features)
         if animate:
             fig = plt.figure(figsize=(10,5))
-            anim = FuncAnimation(fig, func=self.__animated_fit, fargs=(X,y), frames=epochs, interval=10, repeat=False)
+            anim = FuncAnimation(fig, func=self.__animated_fit, fargs=(X,y), frames=epochs, interval=50, repeat=False)
             plt.show()
             return
 
@@ -199,8 +200,13 @@ class PolynomialRegression(GradientDescentRegression):
 
     def __animated_fit(self, epoch, X, y):
         plt.cla()
-        self._step(epoch, X, y)
-        x_line = range(int(np.min(X)), int(np.ceil(np.max(X[:, 1 ]))))
-        y_line = np.dot(X, self.W)
+        x_line = np.linspace(np.min(X[:, 1]), np.max(X[:, 1]), X.shape[0]).reshape(-1, 1)
+        x_line_tr = self.transform(x_line)
+        # x_line_tr = self.normalize(x_line_tr)
+        x_line_tr = np.insert(x_line_tr, 0, 1, axis=1)
+        y_line = np.dot(x_line_tr, self.W)
         plt.scatter(X[:, 1], y)
-        plt.plot(np.linspace(-2, int(np.ceil(np.max(X[:, 1 ]))), 101), y_line);
+        plt.plot(x_line, y_line);
+        plt.grid(True)
+
+        self._step(epoch, X, y)
