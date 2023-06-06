@@ -12,10 +12,8 @@ class MSE:
         self.y_true = y_true
         self.y_pred = y_pred
         self.X = X
-        # print('Loss FN:')
-        # print(self.y_true - self.y_pred)
-        # print(np.mean(0.5 * (self.y_true - self.y_pred)**2))
-        return np.mean(0.5 * (self.y_true - self.y_pred)**2)
+        self.value = np.mean(0.5 * (self.y_true - self.y_pred)**2)
+        return self.value
     
     def get_derivative(self):
         derivative_theta = (-(self.y_true - self.y_pred).dot(self.X)) / self.X.shape[0]
@@ -35,7 +33,6 @@ class MAE:
         derivative_theta[diff<0] = -1/self.y_true
         derivative_theta[diff==0] = 0
         derivative_theta[diff>0] = 1/self.y_true
-        print(derivative_theta)
         return derivative_theta
     
 class RMSE:
