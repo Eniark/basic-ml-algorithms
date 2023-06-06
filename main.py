@@ -30,8 +30,8 @@ if __name__=='__main__':
     # plt.plot(x_line, y_line);
     # plt.show()
 
-    # linear_reg = LinearRegression(learning_rate=1e-1, loss=MSE())
-    # linear_reg.fit(X,y,epochs=50, animate=ANIMATE)
+    linear_reg = LinearRegression(learning_rate=1e-1, loss=MSE())
+    linear_reg.fit(X,y,epochs=50, animate=ANIMATE)
 
     # ols_reg = OLSRegression()
     # m, b = ols_reg.fit(X, y, animate=ANIMATE)
@@ -43,8 +43,8 @@ if __name__=='__main__':
     # y = 2*X**2 - 2*X
 
     # X = X.reshape(-1, 1)
-    polynomial = PolynomialRegression(learning_rate=0.01, degree=3, loss=MSE())
-    polynomial.fit(X,y,epochs=500, animate=ANIMATE)
+    # polynomial = PolynomialRegression(learning_rate=0.01, degree=3, loss=MSE())
+    # polynomial.fit(X,y,epochs=500, animate=ANIMATE)
     # sc = StandardScaler()
 
     # X = sc.fit_transform(X,y)
