@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from itertools import combinations_with_replacement
-plt.rcParams['axes.grid'] = True
 
 
 
@@ -20,11 +19,15 @@ class Regression:
     def normalize(self, X):
         min_x = np.min(X)
         return (X - min_x)/(np.max(X) - min_x)
-    
-    @staticmethod
-    def get_line(x, m, b):
-        return x * m + b
 
+    def graph(self, X, y, W):
+            x_line = np.linspace(np.min(X), np.max(X), X.shape[0]).reshape(-1, 1)
+            x_line = np.insert(x_line, 0, 1, axis=1)
+            y_line = np.dot(x_line, W) # np.array([b, m]))
+            plt.scatter(X, y)
+            plt.plot(x_line[:, 1], y_line)
+            plt.title('Ordinary Least Squares');
+            plt.show()
 
 class OLSRegression(Regression):
 
@@ -36,44 +39,57 @@ class OLSRegression(Regression):
         m = (np.mean(X) * np.mean(y) - np.mean(X*y))/(np.mean(X)**2 - np.mean(X**2))
         b = np.mean(y) - m * np.mean(X)
         if animate:
-            # x_line = range(int(np.min(X)), int(np.ceil(np.max(X))))
-            # y_line = super().get_line(x_line, m, b)
-            x_line = np.linspace(np.min(X), np.max(X), X.shape[0]).reshape(-1, 1)
-            x_line = np.insert(x_line, 0, 1, axis=1)
-            y_line = np.dot(x_line, np.array([b, m]))
-            plt.scatter(X, y)
-            plt.plot(x_line[:, 1], y_line)
-            plt.title('Ordinary Least Squares');
-            plt.show()
+            super().graph(X, y, np.array([b,m]))
         return m, b
 
+
+class NormalEquation(Regression):
+    def __init__(self, alpha=None):
+        self.alpha = alpha
+        super().__init__()
+
+    def fit(self, X, y, animate=False):
+        X = np.insert(X, 0, 1, axis=1)
+        _, n_features = X.shape
+        W_squared = X.T.dot(X)
+        if self.alpha is not None:
+            ident = np.identity(n_features)
+            ident[:, 0] = 0
+            W_squared += self.alpha * ident # regularize normal equation
+        self.W = np.linalg.inv(W_squared).dot(X.T).dot(y)
+        if animate:
+            super().graph(X[:, 1],y, self.W[::-1])
+        return self.W
 
 class GradientDescentRegression(Regression):
 
     """Regression with Gradient descent optimization variants"""
 
-    def __init__(self, loss, learning_rate=1e-2):
+    def __init__(self, loss, learning_rate, scheduler_fn=None):
         self.regularization = lambda w: 0
         self.regularization.derivative = lambda w: 0
-
-        self.loss_fn = loss
         self.learning_rate = learning_rate
+
+        self.loss_fn = loss()
+        self.scheduler_fn = (lambda _: self.learning_rate) if scheduler_fn is None else scheduler_fn 
         self.loss_history = []
 
 
     def _initialize(self, n_parameters):
         limit = 1/np.sqrt(n_parameters)
         self.W = np.random.uniform(-limit, limit, size=(n_parameters, ))
-        print(self.W)
     
     def _step(self, epoch, X, y):
         y_pred = np.dot(X, self.W)
         loss = self.loss_fn.calculate(y, y_pred, X) + self.regularization(self.W[1:])
         self._optimize()
+        print(f'Epoch - {epoch} | Learning rate - {self.learning_rate}')
+
+        self.learning_rate = self.scheduler_fn(epoch)
         self.loss_history.append(loss)
 
     def _optimize(self):
-        derivative_delta = self.loss_fn.get_derivative() + self.regularization.derivative(self.W[1:])
+        derivative_delta = self.loss_fn.get_derivative() + np.concatenate(([0], self.regularization.derivative(self.W[1:])), axis=0)
         self.W -= self.learning_rate * derivative_delta
 
     def predict(self, X):
@@ -112,14 +128,14 @@ class GradientDescentRegression(Regression):
         plt.scatter(X[:, 1], y)
         plt.plot(x_line[:, 1], y_line)
         self._step(epoch, X, y)
-        plt.title(f'Epoch {epoch} | {self.loss_fn.__class__.__name__} loss {np.round(self.loss_fn.value,3)}');
+        plt.title(f'Epoch - {epoch} | Loss - {self.loss_fn.__class__.__name__} | {np.round(self.loss_fn.value,3)} | Learning rate - {self.learning_rate}');
 
 class LinearRegression(GradientDescentRegression):
 
     """Linear Regression using Gradient Descent"""
 
-    def __init__(self, learning_rate, loss):
-        super(LinearRegression, self).__init__(loss=loss, learning_rate=learning_rate)
+    def __init__(self, learning_rate, loss, scheduler_fn):
+        super(LinearRegression, self).__init__(loss=loss, learning_rate=learning_rate, scheduler_fn=scheduler_fn)
     
 
     def fit(self, X, y, epochs=1, animate=False):
@@ -149,9 +165,10 @@ class PolynomialRegression(GradientDescentRegression):
 
     """Suggestion: use learning_rate<=0.01. Very unstable. Skipping this for now."""
 
-    def __init__(self, loss, degree=2, learning_rate=0.01 ):
+    def __init__(self, loss, learning_rate, scheduler_fn=None, penalty=None, degree=2):
         self.degree = degree
-        super(PolynomialRegression, self).__init__(loss=loss, learning_rate=learning_rate)
+        super(PolynomialRegression, self).__init__(loss=loss, learning_rate=learning_rate, scheduler_fn=scheduler_fn)
+        self.regularization = penalty
 
 
     def transform(self, X):
@@ -167,14 +184,13 @@ class PolynomialRegression(GradientDescentRegression):
 
     def fit(self, X, y, epochs=1, animate=False):
     #     assert 0 < self.degree <= 2, 'Degrees > 2 currently not supported.'
+        X = self.standardize(X)
         X = self.transform(X)
-        # X = self.normalize(X)
+        X = np.insert(X, 0, 1, axis=1)
+        _, n_features = X.shape
+        self._initialize(n_features)
         if animate:
-            X = np.insert(X, 0, 1, axis=1)
-            _, n_features = X.shape
-            self._initialize(n_features)
             self._animated_fit(X,y,epochs)
-
         else:
             for epoch in range(1, epochs + 1):
                 self._step(epoch, X, y)
@@ -184,32 +200,33 @@ class PolynomialRegression(GradientDescentRegression):
 
         x_line = np.linspace(np.min(X[:, 1]), np.max(X[:, 1]), X.shape[0]).reshape(-1, 1)
         x_line_tr = self.transform(x_line)
-        # x_line_tr = self.normalize(x_line_tr)
         x_line_tr = np.insert(x_line_tr, 0, 1, axis=1)
-                
         y_line = np.dot(x_line_tr, self.W)
         plt.scatter(X[:, 1], y)
         plt.plot(x_line, y_line);
-
         self._step(epoch, X, y)
+        plt.title(f'Epoch - {epoch} | Loss {self.loss_fn.__class__.__name__} - {np.round(self.loss_fn.value,3)} | Learning rate - {self.learning_rate}');
 
 
 
 class Regularization:
+    """Parent class for regularization"""
     def __init__(self, alpha):
         self.alpha = alpha
 
-class Lasso(Regularization):    
+class Lasso(Regularization):
+    """Regularization which when given high alpha tends to make weights of unimportant features equal zero"""
     def __init__(self, alpha):
         super(Lasso, self).__init__(alpha=alpha)
     
     def __call__(self, W):
-        return self.alpha * np.linalg.norm(W) ###
+        return self.alpha * np.linalg.norm(W)
 
     def derivative(self, W):
-        return self.alpha * np.sum(np.sign(W))
+        return self.alpha * np.sign(W) # use subgradient
     
 class Ridge(Regularization):
+    """Regulariation technique used when dataset contains multicolinearity: features that are explained by other features"""
     def __init__(self, alpha):
         super(Ridge, self).__init__(alpha=alpha)
 
@@ -221,6 +238,13 @@ class Ridge(Regularization):
     
 
 class ElasticNet(Regularization):
+    """Regularization that combines Lasso and Ridge. """
+    
+    """
+        | ====== Parameters ====== |
+        l1_ratio: defines the influence of Lasso in the calculations. 
+            Higher l1_ratio -> will be more like Lasso regression and vice-versa.
+    """
     def __init__(self, alpha, l1_ratio=0.5):
         self.l1_ratio = l1_ratio
         super().__init__(alpha)
@@ -232,12 +256,37 @@ class ElasticNet(Regularization):
         return (self.l1_ratio * np.sign(W) + (1-self.l1_ratio) * W) *  self.alpha
 
 class LassoRegression(GradientDescentRegression):
-    def __init__(self, loss, alpha=0.5, learning_rate=0.01):
-        super(LassoRegression, self).__init__(loss, learning_rate)
+    """Linear Regression using Lasso regularization"""
+    def __init__(self, loss, alpha, learning_rate, scheduler_fn=None):
+        super(LassoRegression, self).__init__(loss, learning_rate, scheduler_fn=scheduler_fn)
         self.regularization = Lasso(alpha=alpha)
+
+
+    def fit(self, X, y, epochs=1, animate=False, use_normal_equation=False):
+        X = self.standardize(X)
+        super().fit(X, y, epochs, animate)
+    
+class RidgeRegression(GradientDescentRegression):
+    """Linear Regression using Ridge regularization"""
+    def __init__(self, loss, alpha, learning_rate):
+        super(RidgeRegression, self).__init__(loss, learning_rate)
+        self.regularization = Ridge(alpha=alpha)
 
 
     def fit(self, X, y, epochs=1, animate=False):
         X = self.standardize(X)
         return super().fit(X, y, epochs, animate)
+
+class ElasticNetRegression(GradientDescentRegression):
+    """Linear Regression using both Lasso and Ridge regularizations"""
+
+    def __init__(self, loss, l1_ratio, alpha, learning_rate):
+        super(ElasticNetRegression, self).__init__(loss, learning_rate)
+        self.regularization = ElasticNet(alpha=alpha,l1_ratio=l1_ratio)
+
+
+    def fit(self, X, y, epochs=1, animate=False):
+        X = self.standardize(X)
+        return super().fit(X, y, epochs, animate)
+
 
