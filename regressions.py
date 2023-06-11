@@ -26,7 +26,7 @@ class Regression:
             y_line = np.dot(x_line, W) # np.array([b, m]))
             plt.scatter(X, y)
             plt.plot(x_line[:, 1], y_line)
-            plt.title('Ordinary Least Squares');
+            plt.title('Analytical solution');
             plt.show()
 
 class OLSRegression(Regression):
@@ -55,19 +55,22 @@ class NormalEquation(Regression):
         if self.alpha is not None:
             ident = np.identity(n_features)
             ident[:, 0] = 0
+            print(ident)
             W_squared += self.alpha * ident # regularize normal equation
         self.W = np.linalg.inv(W_squared).dot(X.T).dot(y)
+        print(self.W)
+
         if animate:
-            super().graph(X[:, 1],y, self.W[::-1])
+            super().graph(X[:, 1],y, self.W)
         return self.W
 
 class GradientDescentRegression(Regression):
 
     """Regression with Gradient descent optimization variants"""
 
-    def __init__(self, loss, learning_rate, scheduler_fn=None):
-        self.regularization = lambda w: 0
-        self.regularization.derivative = lambda w: 0
+    def __init__(self, loss, learning_rate, scheduler_fn=None, regularization=None):
+        self.regularization = (lambda w: 0) if regularization is None else regularization
+        self.regularization.derivative = (lambda w: 0) if regularization is None else regularization.derivative
         self.learning_rate = learning_rate
 
         self.loss_fn = loss()
@@ -89,7 +92,10 @@ class GradientDescentRegression(Regression):
         self.loss_history.append(loss)
 
     def _optimize(self):
-        derivative_delta = self.loss_fn.get_derivative() + np.concatenate(([0], self.regularization.derivative(self.W[1:])), axis=0)
+        regularization_derivative = self.regularization.derivative(self.W[1:])
+        if isinstance(regularization_derivative, np.ndarray):
+            regularization_derivative = np.concatenate(([0], self.regularization.derivative(self.W[1:])), axis=0)
+        derivative_delta = self.loss_fn.get_derivative() + regularization_derivative
         self.W -= self.learning_rate * derivative_delta
 
     def predict(self, X):
@@ -128,7 +134,7 @@ class GradientDescentRegression(Regression):
         plt.scatter(X[:, 1], y)
         plt.plot(x_line[:, 1], y_line)
         self._step(epoch, X, y)
-        plt.title(f'Epoch - {epoch} | Loss - {self.loss_fn.__class__.__name__} | {np.round(self.loss_fn.value,3)} | Learning rate - {self.learning_rate}');
+        plt.title(f'Epoch - {epoch} | Loss {self.loss_fn.__class__.__name__} {np.round(self.loss_fn.value,3)} | Learning rate - {self.learning_rate}');
 
 class LinearRegression(GradientDescentRegression):
 
@@ -167,8 +173,9 @@ class PolynomialRegression(GradientDescentRegression):
 
     def __init__(self, loss, learning_rate, scheduler_fn=None, penalty=None, degree=2):
         self.degree = degree
-        super(PolynomialRegression, self).__init__(loss=loss, learning_rate=learning_rate, scheduler_fn=scheduler_fn)
-        self.regularization = penalty
+        super(PolynomialRegression, self).__init__(
+            loss=loss, learning_rate=learning_rate, scheduler_fn=scheduler_fn, regularization=penalty)
+        # self.regularization = penalty
 
 
     def transform(self, X):
@@ -253,7 +260,7 @@ class ElasticNet(Regularization):
         return self.l1_ratio * self.alpha * np.linalg.norm(W) + (1 - self.l1_ratio) * 0.5 * self.alpha * W.T.dot(W)
     
     def derivative(self, W):
-        return (self.l1_ratio * np.sign(W) + (1-self.l1_ratio) * W) *  self.alpha
+        return (self.l1_ratio * np.sign(W) + (1 - self.l1_ratio) * W) *  self.alpha
 
 class LassoRegression(GradientDescentRegression):
     """Linear Regression using Lasso regularization"""
@@ -268,8 +275,8 @@ class LassoRegression(GradientDescentRegression):
     
 class RidgeRegression(GradientDescentRegression):
     """Linear Regression using Ridge regularization"""
-    def __init__(self, loss, alpha, learning_rate):
-        super(RidgeRegression, self).__init__(loss, learning_rate)
+    def __init__(self, loss, alpha, learning_rate, scheduler_fn=None):
+        super(RidgeRegression, self).__init__(loss, learning_rate, scheduler_fn=scheduler_fn)
         self.regularization = Ridge(alpha=alpha)
 
 
@@ -280,8 +287,8 @@ class RidgeRegression(GradientDescentRegression):
 class ElasticNetRegression(GradientDescentRegression):
     """Linear Regression using both Lasso and Ridge regularizations"""
 
-    def __init__(self, loss, l1_ratio, alpha, learning_rate):
-        super(ElasticNetRegression, self).__init__(loss, learning_rate)
+    def __init__(self, loss, l1_ratio, alpha, learning_rate, scheduler_fn=None):
+        super(ElasticNetRegression, self).__init__(loss, learning_rate, scheduler_fn=scheduler_fn)
         self.regularization = ElasticNet(alpha=alpha,l1_ratio=l1_ratio)
 
 
