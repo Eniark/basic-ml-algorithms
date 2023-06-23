@@ -58,7 +58,6 @@ class NormalEquation(Regression):
             print(ident)
             W_squared += self.alpha * ident # regularize normal equation
         self.W = np.linalg.inv(W_squared).dot(X.T).dot(y)
-        print(self.W)
 
         if animate:
             super().graph(X[:, 1],y, self.W)
@@ -72,7 +71,6 @@ class GradientDescentRegression(Regression):
         self.regularization = (lambda w: 0) if regularization is None else regularization
         self.regularization.derivative = (lambda w: 0) if regularization is None else regularization.derivative
         self.learning_rate = learning_rate
-
         self.loss_fn = loss()
         self.scheduler_fn = (lambda _: self.learning_rate) if scheduler_fn is None else scheduler_fn 
         self.loss_history = []
@@ -95,6 +93,7 @@ class GradientDescentRegression(Regression):
         regularization_derivative = self.regularization.derivative(self.W[1:])
         if isinstance(regularization_derivative, np.ndarray):
             regularization_derivative = np.concatenate(([0], self.regularization.derivative(self.W[1:])), axis=0)
+
         derivative_delta = self.loss_fn.get_derivative() + regularization_derivative
         self.W -= self.learning_rate * derivative_delta
 

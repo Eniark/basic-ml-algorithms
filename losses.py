@@ -81,6 +81,18 @@ class R_adjusted:
 
 
 # =========== Classification Losses ===========
+class BCE:
+    def calculate (self, y_true, y_pred, X):
+        self.y_true = y_true
+        self.y_pred = y_pred
+        self.X = X
+        self.value = -np.sum(y_true*np.log(y_pred) + (1 - y_true)*np.log(1 - y_pred)) / y_true.shape[0]
+        return self.value
+
+    def get_derivative(self):
+        return self.X.T.dot(self.y_pred - self.y_true)
+
+
 
 
 

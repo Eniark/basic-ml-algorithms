@@ -2,9 +2,9 @@
 import numpy as np
 from sklearn.datasets import make_regression
 import matplotlib.pyplot as plt
-from regressions import *
-from losses import *
-from utilities.lr_schedulers import *
+from mllib.regressions import *
+from mllib.losses import *
+from mllib.utilities.lr_schedulers import *
 # from sklearn.preprocessing import PolynomialFeatures
 # from sklearn.linear_model import LinearRegression
 # from sklearn.linear_model import Lasso, SGDRegressor, Ridge, ElasticNet
@@ -46,8 +46,7 @@ if __name__=='__main__':
     # ridge_reg.fit(X,y,epochs=2000, animate=ANIMATE)
 
 
-    lr = ElasticNetRegression(loss=MSE, alpha=0.1, learning_rate=LEARNING_RATE, scheduler_fn=None, l1_ratio=0.9)
-    
-    lr.fit(X, y, epochs=50, animate=True)
+    # lr = ElasticNetRegression(loss=MSE, alpha=0.9, learning_rate=LEARNING_RATE, scheduler_fn=scheduler, l1_ratio=0.9)
+    # lr.fit(X, y, epochs=50, animate=True)
 
 
