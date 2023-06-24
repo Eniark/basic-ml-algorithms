@@ -8,6 +8,8 @@ import numpy as np
 
 
 class MSE:
+    """Mean squared error. Usually used as a loss in training models.
+        However, is strongly affected by the outliers because of the square in the calculations"""
     def calculate(self, y_true, y_pred, X):
         self.y_true = y_true
         self.y_pred = y_pred
@@ -21,6 +23,7 @@ class MSE:
 
 
 class MAE:
+    """Mean absolute error. Is more robust to outliers"""
     def calculate(self, y_true, y_pred, X):
         self.y_true = y_true
         self.y_pred = y_pred
@@ -36,6 +39,7 @@ class MAE:
         return derivative_theta
     
 class RMSE:
+    """Root mean squared error"""
     def calculate(self, y_true, y_pred, X):
         self.y_true = y_true
         self.y_pred = y_pred
@@ -43,6 +47,7 @@ class RMSE:
         return np.sqrt(np.mean((self.y_true - self.y_pred)**2))
 
 class MAPE:
+    """Mean average percentage error"""
     def calculate(self, y_true, y_pred, X):
         self.y_true = y_true
         self.y_pred = y_pred
@@ -56,6 +61,7 @@ class MAPE:
 
 
 class R_squared:
+    """Regression metric that shows how much variance of the data the line explains."""
     def calculate(self, y_true, y_pred, X):
         self.y_true = y_true
         self.y_pred = y_pred
@@ -71,6 +77,9 @@ class R_squared:
 
 
 class R_adjusted:
+    """R-adjusted metric. With the increase of variables R-squared also increases.
+        But if a new variable is not useful to the problem, R-squared will still increase.
+         R-adjusted mitigates that effect"""
     def calculate(self, y_true, y_pred, X):
         self.y_true = y_true
         self.y_pred = y_pred
@@ -82,6 +91,7 @@ class R_adjusted:
 
 # =========== Classification Losses ===========
 class BCE:
+    """Binary Cross-Entropy Loss"""
     def calculate (self, y_true, y_pred, X):
         self.y_true = y_true
         self.y_pred = y_pred

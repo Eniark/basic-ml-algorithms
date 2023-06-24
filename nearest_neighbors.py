@@ -56,21 +56,25 @@ class KNN:
         mask = np.ones(self.X.shape[0], dtype=bool)
         mask[idxs] = False
         X_masked = self.X[mask]
-        plt.scatter(X_masked[:,0], X_masked[:,1], label='Other points', edgecolors='b')
+        plt.scatter(X_masked[:,0], X_masked[:,1], edgecolors='b')
 
-        plt.scatter(X_pred[0], X_pred[1], c='red', label='Input point', edgecolors='b')
+        plt.scatter(X_pred[0], X_pred[1], c='red', edgecolors='b')
         plt.title(f'{self.__class__.__name__}')
 
 class KNeighboursClassifier(KNN):
-    """KNN class for classification tasks."""
+    """KNN class for classification tasks"""
     def __init__(self, n_neighbors=5, algorithm='brute'):
         super(KNeighboursClassifier, self).__init__(n_neighbors, algorithm)
 
     def graph(self, idxs, X_pred):
-        """Invoke parents method and plot points coloured by class"""
+        """Plot points and neighbors"""
         super(KNeighboursClassifier, self).graph(idxs, X_pred)
-        plt.scatter(self.X[idxs, 0], self.X[idxs, 1], c=self.y[idxs], label='Neighbors')
-        plt.legend()
+        s = plt.scatter(self.X[idxs, 0], self.X[idxs, 1], c=self.y[idxs])
+        plt.legend(
+            handles=s.legend_elements()[0],
+            labels=map(lambda label: f'Class {label}', np.unique(self.y[idxs]))
+        )
+
         plt.show()
         
 
@@ -163,15 +167,14 @@ class KDTree:
         if not current_node:
             return neighbors, best_node, best_distance
         d = euclidean_distance(current_node.X, X)
-
         if d < best_distance:
             best_distance = d
             best_node = current_node
 
+        neighbors = sorted(neighbors, key=lambda x: x[1])
         if len(neighbors) < self.k:
             neighbors.append((current_node, d))
         elif len(neighbors) >= self.k and d < neighbors[-1][-1]:
-            neighbors = sorted(neighbors, key=lambda x: x[1])
             neighbors[-1] = (current_node, d)
         if X[current_node.axis] < current_node.X[current_node.axis]:
             good_side = current_node.left
@@ -190,7 +193,7 @@ class KDTree:
 
     def nearest_neighbors(self, X):
         """Search k closest neighbors to query point X"""
-        neighbors, _, _ = self._nearest_neighbors(X, self.root)
+        neighbors, _, _= self._nearest_neighbors(X, self.root)
         neighbors = sorted(neighbors, key=lambda x: x[-1])
         idxs = np.array(list(map(lambda x: x[0].idx, neighbors)))
         return idxs

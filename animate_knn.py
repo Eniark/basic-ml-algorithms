@@ -13,7 +13,7 @@ if __name__=='__main__':
 
     # X = np.array([[7,2], [5,4], [7,6], [2,3], [4,7], [8,1]])
     # y = np.array([1,0,0,1,1,0])
-    knn = KNeighboursClassifier(n_neighbors=3, algorithm='kd')
+    knn = KNeighboursClassifier(n_neighbors=5, algorithm='kd')
     knn.fit(X,y)
-    X_pred = [0, 1]
+    X_pred = [1, .5]
     print(knn.predict(X_pred, show_graph=True))

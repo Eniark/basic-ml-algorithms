@@ -12,3 +12,4 @@
 | `06/11/2023` | Added regularization possibility to Normal equation. Implemented brute-force algorithm for KNN. Created KNeighboursClassifier and -Regressor. Started work on KD-Tree for KNN. |
 | `06/18/2023` | Added KD-tree implementation. Implemented tree construction and traversal to search for k-nearest neighbors. |
 | `06/23/2023` | Added Logistic Regression. Had some trouble with backpropagation but eventually found the mistake. Started implementation of One-vs-Rest classifiers since Logistic regression is a binary classifier. |
+| `06/24/2023` | Added multiclass classification strategies (One-vs-Rest, One-vs-One). Tested it using Logistic regression. Tested Logistic regression with Lasso and Ridge regularization. Fixed a bug in KD-Tree when searching for closest neighbors. Added more documentation to code. |
