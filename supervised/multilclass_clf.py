@@ -49,6 +49,6 @@ class OneVsOne:
             new_model.fit(new_X,new_y, epochs=epochs, animate=animate)
     def predict(self, X):
         """Get the mode prediction as the result of all classifiers"""
-        # probabilities = 1 - np.array([model.predict(X, predict_proba=True) for model in self.classifiers])
-        # return np.argmax(probabilities)
-
+        probabilities = np.array([model.predict(X, predict_proba=False) for model in self.classifiers]).flatten()
+        uniq, cnt = np.unique(probabilities, return_counts=True)
+        return uniq[np.argmax(cnt)]

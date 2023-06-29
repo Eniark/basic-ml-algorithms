@@ -2,10 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from itertools import combinations_with_replacement
-
-
-
-
+from mllib.utilities.regularization import Lasso, Ridge, ElasticNet
 
 class Regression:
 
@@ -63,7 +60,7 @@ class NormalEquation(Regression):
             super().graph(X[:, 1],y, self.W)
         return self.W
 
-class GradientDescentRegression(Regression):
+class GradientDescent(Regression):
 
     """Regression with Gradient descent optimization variants"""
 
@@ -93,25 +90,9 @@ class GradientDescentRegression(Regression):
         regularization_derivative = self.regularization.derivative(self.W[1:])
         if isinstance(regularization_derivative, np.ndarray):
             regularization_derivative = np.concatenate(([0], self.regularization.derivative(self.W[1:])), axis=0)
-
+        print('EXEC')
         derivative_delta = self.loss_fn.get_derivative() + regularization_derivative
         self.W -= self.learning_rate * derivative_delta
-
-    def predict(self, X):
-        X = np.insert(X, 0, 1, axis=1)
-        y_pred = X.dot(self.W)
-        return y_pred
-
-    def fit(self, X, y, epochs=1, animate=False):
-        X = np.insert(X, 0, 1, axis=1)
-        _, n_features = X.shape
-        self._initialize(n_features)
-        if animate:    
-            self._animated_fit(X,y, epochs + 1)
-        else:
-            for epoch in range(1, epochs + 1):
-                self._step(epoch, X, y)
-
 
     def _animated_fit(self, X, y, epochs):
         fig = plt.figure(figsize=(10,5))
@@ -123,6 +104,15 @@ class GradientDescentRegression(Regression):
         plt.ylabel('Error')
         plt.show()
 
+    def fit(self, X, y, epochs=1, animate=False):
+        X = np.insert(X, 0, 1, axis=1)
+        _, n_features = X.shape
+        self._initialize(n_features)
+        if animate:
+            self._animated_fit(X,y, epochs + 1)
+        else:
+            for epoch in range(1, epochs + 1):
+                self._step(epoch, X, y)
 
     def _animated_fit_step(self, epoch, X, y):
         plt.cla()
@@ -135,20 +125,21 @@ class GradientDescentRegression(Regression):
         self._step(epoch, X, y)
         plt.title(f'Epoch - {epoch} | Loss {self.loss_fn.__class__.__name__} {np.round(self.loss_fn.value,3)} | Learning rate - {self.learning_rate}');
 
-class LinearRegression(GradientDescentRegression):
+class LinearRegression(GradientDescent):
 
     """Linear Regression using Gradient Descent"""
 
     def __init__(self, learning_rate, loss, scheduler_fn):
         super(LinearRegression, self).__init__(loss=loss, learning_rate=learning_rate, scheduler_fn=scheduler_fn)
-    
-
-    def fit(self, X, y, epochs=1, animate=False):
-        super(LinearRegression, self).fit(X, y, epochs=epochs, animate=animate)
 
 
-    
-class SGDRegressor(GradientDescentRegression):
+    def predict(self, X):
+        X = np.insert(X, 0, 1, axis=1)
+        y_pred = X.dot(self.W)
+        return y_pred
+
+
+class SGDRegressor(LinearRegression):
 
     """Linear Regression using Stochastic Gradient Descent"""
     def __init__(self, learning_rate, loss):
@@ -165,7 +156,7 @@ class SGDRegressor(GradientDescentRegression):
 
 
 
-class PolynomialRegression(GradientDescentRegression):
+class PolynomialRegression(LinearRegression):
     """Multiple regression using Gradient Descent algorithm"""
 
     """Suggestion: use learning_rate<=0.01. Very unstable. Skipping this for now."""
@@ -214,85 +205,38 @@ class PolynomialRegression(GradientDescentRegression):
         plt.title(f'Epoch - {epoch} | Loss {self.loss_fn.__class__.__name__} - {np.round(self.loss_fn.value,3)} | Learning rate - {self.learning_rate}');
 
 
-
-class Regularization:
-    """Parent class for regularization"""
-    def __init__(self, alpha):
-        self.alpha = alpha
-
-class Lasso(Regularization):
-    """Regularization which when given high alpha tends to make weights of unimportant features equal zero"""
-    def __init__(self, alpha):
-        super(Lasso, self).__init__(alpha=alpha)
-    
-    def __call__(self, W):
-        return self.alpha * np.linalg.norm(W)
-
-    def derivative(self, W):
-        return self.alpha * np.sign(W) # use subgradient
-    
-class Ridge(Regularization):
-    """Regulariation technique used when dataset contains multicolinearity: features that are explained by other features"""
-    def __init__(self, alpha):
-        super(Ridge, self).__init__(alpha=alpha)
-
-    def __call__(self, W):
-        return self.alpha * 0.5 * W.T.dot(W)
-
-    def derivative(self, W):
-        return self.alpha * W
-    
-
-class ElasticNet(Regularization):
-    """Regularization that combines Lasso and Ridge. """
-    
-    """
-        | ====== Parameters ====== |
-        l1_ratio: defines the influence of Lasso in the calculations. 
-            Higher l1_ratio -> will be more like Lasso regression and vice-versa.
-    """
-    def __init__(self, alpha, l1_ratio=0.5):
-        self.l1_ratio = l1_ratio
-        super().__init__(alpha)
-
-    def __call__(self, W):
-        return self.l1_ratio * self.alpha * np.linalg.norm(W) + (1 - self.l1_ratio) * 0.5 * self.alpha * W.T.dot(W)
-    
-    def derivative(self, W):
-        return (self.l1_ratio * np.sign(W) + (1 - self.l1_ratio) * W) *  self.alpha
-
-class LassoRegression(GradientDescentRegression):
+class LassoRegression(LinearRegression):
     """Linear Regression using Lasso regularization"""
     def __init__(self, loss, alpha, learning_rate, scheduler_fn=None):
-        super(LassoRegression, self).__init__(loss, learning_rate, scheduler_fn=scheduler_fn)
+        super(LassoRegression, self).__init__(loss=loss, learning_rate=learning_rate, scheduler_fn=scheduler_fn)
         self.regularization = Lasso(alpha=alpha)
 
 
     def fit(self, X, y, epochs=1, animate=False, use_normal_equation=False):
         X = self.standardize(X)
-        super().fit(X, y, epochs, animate)
+        super(LassoRegression, self).fit(X, y, epochs, animate)
     
-class RidgeRegression(GradientDescentRegression):
+class RidgeRegression(LinearRegression):
     """Linear Regression using Ridge regularization"""
     def __init__(self, loss, alpha, learning_rate, scheduler_fn=None):
-        super(RidgeRegression, self).__init__(loss, learning_rate, scheduler_fn=scheduler_fn)
+        super(RidgeRegression, self).__init__(loss=loss, learning_rate=learning_rate, scheduler_fn=scheduler_fn)
         self.regularization = Ridge(alpha=alpha)
 
 
     def fit(self, X, y, epochs=1, animate=False):
         X = self.standardize(X)
-        return super().fit(X, y, epochs, animate)
+        return super(RidgeRegression, self).fit(X, y, epochs, animate)
 
-class ElasticNetRegression(GradientDescentRegression):
+class ElasticNetRegression(LinearRegression):
     """Linear Regression using both Lasso and Ridge regularizations"""
 
     def __init__(self, loss, l1_ratio, alpha, learning_rate, scheduler_fn=None):
-        super(ElasticNetRegression, self).__init__(loss, learning_rate, scheduler_fn=scheduler_fn)
+        super(ElasticNetRegression, self).__init__(loss=loss, learning_rate=learning_rate, scheduler_fn=scheduler_fn)
         self.regularization = ElasticNet(alpha=alpha,l1_ratio=l1_ratio)
 
 
     def fit(self, X, y, epochs=1, animate=False):
         X = self.standardize(X)
-        return super().fit(X, y, epochs, animate)
+        return super(ElasticNetRegression, self).fit(X, y, epochs, animate)
 
 

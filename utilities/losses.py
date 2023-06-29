@@ -103,8 +103,17 @@ class BCE:
         return self.X.T.dot(self.y_pred - self.y_true)
 
 
+class Hinge:
+    """Hinge Loss for Support Vector Machine"""
+    def calculate(self, y_true, y_pred, X):
+        padded_y_pred = np.insert(1 - y_pred.reshape(-1, 1), 0, 0, axis=1)
+        return np.mean(np.where(y_true*y_pred>=1, 0, np.max(padded_y_pred, axis=1)))
 
-
+    def get_derivative(self, y_true, y_pred, X):
+        dot = -y_true.dot(X)
+        print(dot, np.zeros(shape=(dot.shape[0], )))
+        print(np.atleast_2d(y_true * y_pred).shape)
+        return np.where((y_true * y_pred).reshape(-1, 3) >= 1, np.zeros(shape=(dot.shape[0],)), dot)
 
 
 

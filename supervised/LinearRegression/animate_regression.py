@@ -1,14 +1,8 @@
 
-import numpy as np
 from sklearn.datasets import make_regression
-import matplotlib.pyplot as plt
-from mllib.regressions import *
-from mllib.losses import *
+from mllib.supervised.LinearRegression.regressions import *
+from mllib.utilities.losses import *
 from mllib.utilities.lr_schedulers import *
-# from sklearn.preprocessing import PolynomialFeatures
-# from sklearn.linear_model import LinearRegression
-# from sklearn.linear_model import Lasso, SGDRegressor, Ridge, ElasticNet
-# from sklearn.preprocessing import StandardScaler
 np.random.seed(1)
 plt.rcParams['axes.grid'] = True
 
@@ -31,9 +25,11 @@ if __name__=='__main__':
     scheduler = configure_power_scheduler(lr0=LEARNING_RATE, every=30)
     # scheduler = configure_exponential_decay(lr0=LEARNING_RATE, every=50)
 
-    # lr = LassoRegression(loss=MSE, alpha=0.9, learning_rate=LEARNING_RATE, scheduler_fn=None)
+    # lr = LinearRegression(loss=MSE, learning_rate=LEARNING_RATE, scheduler_fn=None)
     # lr.fit(X, y, epochs=30,animate=ANIMATE)
 
+    lr = LassoRegression(loss=MSE, alpha=0.9, learning_rate=LEARNING_RATE, scheduler_fn=None)
+    lr.fit(X, y, epochs=30,animate=ANIMATE)
 
     # lasso = Lasso(alpha=0.9)
     # lr = PolynomialRegression(loss=MSE,  learning_rate=LEARNING_RATE, scheduler_fn=scheduler, degree=6, penalty=lasso)
